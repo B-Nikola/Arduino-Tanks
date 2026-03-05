@@ -2,6 +2,16 @@
 Manier un tank avec des controlle "réaliste". le but du jeu est de détruire le tank adverse.
 Le focus du projet a été le lien entre capteur et le site
 
+## inspirations
+
+Les inspirations majeures ont été :
+Wii Play: Tanks!
+https://shakethatbutton.com/spacebattleship-shield/
+
+## mini vidéo et image
+
+
+
 ## Configuration Matérielle 
 requis pour chaque char 
 
