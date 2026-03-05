@@ -155,15 +155,15 @@ function draw() {
   if (lives2 > 0) {
     // Calcul de la puissance de chaque chenille (Inversé : plus la main est proche, plus c'est fort)
     // On considère qu'au delà de 25cm, il n'y a pas de main
-    let pG = map(distG, 2, 25, 2, 0, true); 
-    let pD = map(distD, 2, 25, 2, 0, true);
+    let pG = distG ;
+    let pD = distD;
 
     // Rotation du châssis : la différence entre gauche et droite
-    let rotationVitesse = (pG - pD) * 0.02;
+    let rotationVitesse = (pG - pD) * 0.0075;
     angleChar += rotationVitesse;
 
     // Avancement : basé sur la puissance minimale des deux mains pour garantir que les deux sont là
-    let puissanceAvance = (pG + pD) / 2;
+    let puissanceAvance = (pG + pD) / 5.5;
     
     // Application du Switch (1 avance, 0 recule)
     let multiplicateurDirection = (directionSwitch === 1) ? 1 : -1;
