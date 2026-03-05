@@ -24,12 +24,18 @@ let lives1 = 3;       // Vies Tank 1
 let bullets = [];
 const SEUIL_MUNITION = 300; // Si pressure < 300, pas de tir
 
+// Wall system
+let walls = [];
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  x = width / 2;
-  y = height / 2;
-  x1 = width / 4;
-  y1 = height / 4;
+  x = width / 1.1;
+  y = height / 1.2;
+  x1 = width / 5.5;
+  y1 = height / 5;
+
+  // Initialize walls
+  initializeWalls();
 
   serial = new p5.SerialPort();
   serial.on("data", serialEvent);
@@ -109,26 +115,35 @@ function draw() {
     let pD1 = distD1;
 
     // Rotation du châssis Tank 1
-    let rotationVitesse1 = (pG1 - pD1) * 0.002;
+    let rotationVitesse1 = (pG1 - pD1) * 0.0075;
     angleChar1 += rotationVitesse1;
 
     // Avancement Tank 1
-    let puissanceAvance1 = (pG1 + pD1) / 2;
+    let puissanceAvance1 = (pG1 + pD1) / 5.5;
     let multiplicateurDirection1 = (directionSwitch1 === 1) ? 1 : -1;
     vitesseLineaire1 = puissanceAvance1 * multiplicateurDirection1;
 
-    // Mise à jour de la position Tank 1
-    x1 += cos(angleChar1) * vitesseLineaire1;
-    y1 += sin(angleChar1) * vitesseLineaire1;
-
+    // Mise à jour de la position Tank 1 with wall collision
+    let newX1 = x1 + cos(angleChar1) * vitesseLineaire1;
+    let newY1 = y1 + sin(angleChar1) * vitesseLineaire1;
+    
     // Keep tank 1 within screen bounds
-    x1 = constrain(x1, tankSize, width - tankSize);
-    y1 = constrain(y1, tankSize, height - tankSize);
+    newX1 = constrain(newX1, tankSize, width - tankSize);
+    newY1 = constrain(newY1, tankSize, height - tankSize);
+    
+    // Check wall collisions before moving
+    if (!checkTankWallCollision(newX1, newY1, tankSize)) {
+      x1 = newX1;
+      y1 = newY1;
+    }
 
-    // Logique tourelle Tank 1 - 15 degrees per encoder change
+    // Logique tourelle Tank 1 - Fixed increment rotation based on encoder direction
     if (encoder1 !== prevEncoder1) {
-      let encoderDiff = encoder1 - prevEncoder1;
-      angleTourelle1 += encoderDiff * radians(15); // 15 degrees per step
+      if (encoder1 > prevEncoder1) {
+        angleTourelle1 += 15 * (PI / 180); // Rotate 1 degree clockwise
+      } else {
+        angleTourelle1 -= 15 * (PI / 180); // Rotate 1 degree counter-clockwise
+      }
       prevEncoder1 = encoder1;
     }
   }
@@ -155,23 +170,35 @@ function draw() {
     
     vitesseLineaire = puissanceAvance * multiplicateurDirection;
 
-    // Mise à jour de la position
-    x += cos(angleChar) * vitesseLineaire;
-    y += sin(angleChar) * vitesseLineaire;
-
+    // Mise à jour de la position with wall collision
+    let newX = x + cos(angleChar) * vitesseLineaire;
+    let newY = y + sin(angleChar) * vitesseLineaire;
+    
     // Keep tank within screen bounds (walls at screen edges)
-    x = constrain(x, tankSize, width - tankSize);
-    y = constrain(y, tankSize, height - tankSize);
+    newX = constrain(newX, tankSize, width - tankSize);
+    newY = constrain(newY, tankSize, height - tankSize);
+    
+    // Check wall collisions before moving
+    if (!checkTankWallCollision(newX, newY, tankSize)) {
+      x = newX;
+      y = newY;
+    }
 
-    // 3. --- LOGIQUE TOURELLE TANK 2 - 15 degrees per encoder change ---
+    // 3. --- LOGIQUE TOURELLE TANK 2 - Fixed increment rotation based on encoder direction ---
     if (encoder !== prevEncoder) {
-      let encoderDiff = encoder - prevEncoder;
-      angleTourelle += encoderDiff * radians(15); // 15 degrees per step
+      if (encoder > prevEncoder) {
+        angleTourelle += 15 * (PI / 180); // Rotate 1 degree clockwise
+      } else {
+        angleTourelle -= 15 * (PI / 180); // Rotate 1 degree counter-clockwise
+      }
       prevEncoder = encoder;
     }
   }
 
-  // 4. --- DESSIN DES TANKS ---
+  // 4. --- DESSIN DES MURS ---
+  drawWalls();
+  
+  // 5. --- DESSIN DES TANKS ---
   
   // DESSIN TANK 1 (Blue tank) - Only if alive
   if (lives1 > 0) {
@@ -249,12 +276,18 @@ function draw() {
   pop();
   } // End Tank 2 alive check
 
-  // 5. --- SYSTÈME DE TIR ---
+  // 6. --- SYSTÈME DE TIR ---
   for (let i = bullets.length - 1; i >= 0; i--) {
     bullets[i].update();
     
     // Check if bullet has expired (2 seconds = 2000ms)
     if (millis() - bullets[i].creationTime > 2000) {
+      bullets.splice(i, 1);
+      continue;
+    }
+    
+    // Check wall collision for bullets
+    if (checkBulletWallCollision(bullets[i])) {
       bullets.splice(i, 1);
       continue;
     }
@@ -360,6 +393,63 @@ function drawUI(v, v1) {
     text("MAX PROJECTILES ACTIVE!", 20, 345);
     fill(255);
   }
+}
+
+// Wall initialization function
+function initializeWalls() {
+  walls = [];
+  
+  // Horizontal walls
+  walls.push({x: width * 0.3, y: height * 0.3, w: width * 0.4, h: 20});
+  walls.push({x: width * 0.1, y: height * 0.7, w: width * 0.3, h: 20});
+  walls.push({x: width * 0.6, y: height * 0.8, w: width * 0.3, h: 20});
+  
+  // Vertical walls
+  walls.push({x: width * 0.2, y: height * 0.1, w: 20, h: height * 0.15});
+  walls.push({x: width * 0.8, y: height * 0.4, w: 20, h: height * 0.3});
+  walls.push({x: width * 0.5, y: height * 0.5, w: 20, h: height * 0.25});
+  
+  // Corner walls for more interesting layout
+  walls.push({x: width * 0.05, y: height * 0.05, w: 80, h: 80});
+  walls.push({x: width * 0.85, y: height * 0.05, w: 80, h: 80});
+}
+
+// Draw all walls
+function drawWalls() {
+  fill(100, 70, 40);
+  stroke(80, 50, 20);
+  strokeWeight(2);
+  
+  for (let wall of walls) {
+    rect(wall.x, wall.y, wall.w, wall.h);
+  }
+}
+
+// Check if tank collides with any wall
+function checkTankWallCollision(tankX, tankY, tankSize) {
+  for (let wall of walls) {
+    // Check if tank (circular) intersects with wall (rectangular)
+    let closestX = constrain(tankX, wall.x, wall.x + wall.w);
+    let closestY = constrain(tankY, wall.y, wall.y + wall.h);
+    
+    let distance = dist(tankX, tankY, closestX, closestY);
+    
+    if (distance < tankSize / 2) {
+      return true; // Collision detected
+    }
+  }
+  return false; // No collision
+}
+
+// Check if bullet collides with any wall
+function checkBulletWallCollision(bullet) {
+  for (let wall of walls) {
+    if (bullet.pos.x >= wall.x && bullet.pos.x <= wall.x + wall.w &&
+        bullet.pos.y >= wall.y && bullet.pos.y <= wall.y + wall.h) {
+      return true; // Collision detected
+    }
+  }
+  return false; // No collision
 }
 
 class Bullet {

@@ -92,9 +92,12 @@ float getDist(int trig, int echo) {
   digitalWrite(trig, HIGH); delayMicroseconds(10);
   digitalWrite(trig, LOW);
   long duration = pulseIn(echo, HIGH, 25000);
-  if (duration == 0) return 10; // Max distance mappée
+  if (duration == 0) return 0; // Max distance mappée
   int dist = duration * 0.034 / 2;
-  return map(dist, 0, 30, 0, 10);
+  if(dist>20)
+  return 0;
+else
+  return map(dist, 0, 20, 5, 1);
 }
 
 void loop() {
